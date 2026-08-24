@@ -7,15 +7,32 @@ trap cleanup EXIT
 # Every promql metric referenced by the dashboard must exist in the captured set.
 # That file is a LOWER BOUND (the exporter registers metrics lazily), so a miss means
 # "verify this metric is real", not necessarily "this metric does not exist".
-# metrics-available.txt records HELP lines under the histogram's base name only -
-# it never lists the _bucket/_sum/_count series a histogram expands into at scrape
-# time - so strip those suffixes before checking.
+#
+# Capture the list FIRST and assert it is non-empty. A `while read < <(producer)` over
+# empty input runs zero iterations and silently passes - the check would be vacuous
+# exactly when the dashboard is malformed.
+metrics=$(jq -r '.panels[].targets[].expr' charts/observability/dashboards/llm-d-serving.json \
+          | grep -oE 'vllm:[a-z_]+' | sort -u || true)
+[ -n "$metrics" ] || fail "extracted no vllm: metric names from the dashboard - malformed JSON or wrong query syntax"
+
 while read -r m; do
-  base="${m%_bucket}"; base="${base%_sum}"; base="${base%_count}"
-  grep -q "$base" local/metrics-available.txt \
-    || fail "dashboard references '$m', base metric '$base' absent from local/metrics-available.txt - confirm it is real and re-capture, or fix the query"
-done < <(jq -r '.panels[].targets[].expr' charts/observability/dashboards/llm-d-serving.json \
-         | grep -oE 'vllm:[a-z_]+' | sort -u)
+  # Histogram suffixes are NOT in metrics-available.txt (it records only HELP base
+  # names), so they must be stripped - but ONLY when the base is genuinely a histogram.
+  # Stripping unconditionally would let a hallucinated 'vllm:num_requests_waiting_bucket'
+  # pass by matching the Gauge 'vllm:num_requests_waiting', rendering an empty panel with
+  # no error - precisely the failure this check exists to prevent.
+  case "$m" in
+    *_bucket|*_sum|*_count)
+      base="${m%_bucket}"; base="${base%_sum}"; base="${base%_count}"
+      grep -q "HELP $base Histogram" <<<"$(cat local/metrics-available.txt)" \
+        || fail "dashboard uses histogram suffix on '$m', but '$base' is not a Histogram in local/metrics-available.txt"
+      ;;
+    *)
+      grep -q "$m" <<<"$(cat local/metrics-available.txt)" \
+        || fail "dashboard references '$m', absent from local/metrics-available.txt - confirm it is real and re-capture, or fix the query"
+      ;;
+  esac
+done <<<"$metrics"
 
 # Every panel must break down by pool (llm_d_ai_role) - otherwise it is useless for P/D sizing.
 panel_count=$(jq -e '.panels | length' charts/observability/dashboards/llm-d-serving.json) \

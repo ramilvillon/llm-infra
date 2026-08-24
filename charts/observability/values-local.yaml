@@ -10,6 +10,11 @@ grafana:
     dashboards:
       enabled: true
       label: grafana_dashboard
+      # This label only watches ConfigMaps - it does not create one. The
+      # llm-d-serving-dashboard ConfigMap (charts/observability/dashboards/llm-d-serving.json,
+      # labelled grafana_dashboard=1) is created imperatively by `make up` (Task 11),
+      # NOT by this Helm chart. Removing that Makefile line silently disables the
+      # dashboard: the sidecar keeps watching, but nothing is there to find.
 prometheus:
   prometheusSpec:
     # Scrape every ServiceMonitor/PodMonitor regardless of release label,
