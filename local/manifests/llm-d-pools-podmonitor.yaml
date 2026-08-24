@@ -1,0 +1,47 @@
+# Hand-rolled PodMonitor covering both the prefill and decode pools.
+#
+# Why hand-rolled instead of the llm-d-modelservice chart's own
+# decode.monitoring.podmonitor / prefill.monitoring.podmonitor:
+#   - One PodMonitor selecting on llm-d.ai/role covers both pools instead
+#     of enabling+configuring two separate per-role chart values blocks.
+#   - The chart's own PodMonitor and a hand-rolled one both need the pod to
+#     declare the metrics port in its spec regardless (see note below), so
+#     hand-rolling costs nothing extra here.
+#
+# PodMonitor port selection (port/portNumber/targetPort) ALWAYS requires the
+# target container port to be declared in the Pod spec - Prometheus's pod
+# service-discovery builds target addresses from the pod's own declared
+# ports, not from a bare port number/name in the PodMonitor. Confirmed via
+# `kubectl get crd podmonitors.monitoring.coreos.com -o yaml`, e.g. for
+# portNumber: "The Pod must declare the specified Port in its spec or the
+# target will be dropped by Prometheus." The inference-sim containers
+# originally shipped by Task 6 declared no container ports at all, so an
+# earlier version of this file used `targetPort: 8000` per the task brief -
+# it silently produced portless, dropped targets (visible only via
+# `.../api/v1/targets?state=any`, not the default active-only view). Fixed
+# by adding a named "metrics" container port (8000) to
+# charts/llm-d/modelservice-values-local.yaml and re-running the Task 6
+# `helm upgrade` for the llm-d-ms release, then referencing that name here.
+#
+# apply with: kubectl apply -f local/manifests/llm-d-pools-podmonitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: llm-d-pools
+  namespace: llm-d
+spec:
+  selector:
+    matchExpressions:
+      - key: llm-d.ai/role
+        operator: In
+        values: [prefill, decode]
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+      # Without this, the pod's llm-d.ai/role label never reaches the metrics
+      # and every dashboard query in Task 8 that groups by pool returns empty.
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_label_llm_d_ai_role]
+          targetLabel: llm_d_ai_role
+          action: replace
