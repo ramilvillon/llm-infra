@@ -1,4 +1,10 @@
-# SQLite on a PVC - local only. POC and prod use RDS Postgres per the spec.
+# SQLite on a single RWO PVC - LOCAL ONLY. POC and prod use RDS Postgres per the spec.
+#
+# CEILING: SQLite on one RWO volume is strictly single-writer. There is no HA, no
+# concurrent access from a second replica, and the data lives only as long as this PVC.
+# It is fine for one engineer running evals locally; it will corrupt rather than fail
+# loudly if scaled. Hence the replicaCount pin below - do not remove it.
+replicaCount: 1
 backendStore:
   databaseMigration: true
   # Chart default is ":memory:", which loses every experiment on restart.
@@ -37,6 +43,9 @@ extraDeploy:
       name: mlflow-nodeport
     spec:
       type: NodePort
+      # Derived from the live deployment, NOT guessed. Re-derive this if
+      # MLFLOW_CHART_VERSION changes: a chart bump can rename these labels, which
+      # would silently zero the Service's endpoints.
       selector:
         app: mlflow
         app.kubernetes.io/name: mlflow

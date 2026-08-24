@@ -2,7 +2,10 @@
 set -euo pipefail
 fail() { echo "FAIL: $1" >&2; exit 1; }
 
-kubectl -n mlflow rollout status deploy --timeout=300s >/dev/null 2>&1 || fail "mlflow not ready"
+# Name the resource. `rollout status deploy` with NO name prints "No resources found"
+# and exits 0, so it passes against a missing namespace entirely - proven: nameless
+# exit=0, named exit=1 against a nonexistent namespace.
+kubectl -n mlflow rollout status deploy/mlflow --timeout=300s >/dev/null 2>&1 || fail "mlflow not ready"
 curl -fsS localhost:30500/health >/dev/null 2>&1 || curl -fsS localhost:30500/ >/dev/null 2>&1 \
   || fail "mlflow not reachable on :30500"
 
