@@ -6,6 +6,10 @@ grafana:
     type: NodePort
     nodePort: 30300
   adminPassword: admin   # local only - never used outside kind
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
 prometheus:
   prometheusSpec:
     # Scrape every ServiceMonitor/PodMonitor regardless of release label,
