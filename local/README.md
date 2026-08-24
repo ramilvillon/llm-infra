@@ -53,6 +53,18 @@ colima isn't already running).
 These are bound to `127.0.0.1` only (see `kind-config.yaml`), not `0.0.0.0`
 — they are not reachable from other devices on the same network.
 
+## ArgoCD reads from GitHub, not from your working tree
+
+`llm-d-infra`, `llm-d`, `observability`, and `mlflow` are ArgoCD
+`Application`s that sync from `https://github.com/ramilvillon/llm-infra`,
+branch `phase-0-local-stack` - **not** from the files on disk. A local
+commit has ZERO effect on the cluster until it is pushed to `origin`. If you
+edit anything ArgoCD reads (any `charts/*/values*.yaml`, or an
+`argocd/applications/*.yaml` Application spec itself) and don't see it take
+effect, this is almost always why - push first, then wait for the next
+automated sync (or `kubectl -n argocd get application <name>` to check
+`status.sync.status`).
+
 ## Try it
 
 ```bash

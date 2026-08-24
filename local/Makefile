@@ -13,11 +13,11 @@ SHELL := /usr/bin/env bash
 up:
 	colima status >/dev/null 2>&1 || colima start --cpu 6 --memory 12 --disk 60
 	kind get clusters | grep -qx llm-d-local || kind create cluster --config kind-config.yaml
-	helm repo add llm-d-infra https://llm-d-incubation.github.io/llm-d-infra/ >/dev/null 2>&1 || true
-	helm repo add llm-d-modelservice https://llm-d-incubation.github.io/llm-d-modelservice/ >/dev/null 2>&1 || true
-	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts >/dev/null 2>&1 || true
-	helm repo add community-charts https://community-charts.github.io/helm-charts >/dev/null 2>&1 || true
-	helm repo add argo https://argoproj.github.io/argo-helm >/dev/null 2>&1 || true
+	helm repo add llm-d-infra https://llm-d-incubation.github.io/llm-d-infra/ >/dev/null
+	helm repo add llm-d-modelservice https://llm-d-incubation.github.io/llm-d-modelservice/ >/dev/null
+	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts >/dev/null
+	helm repo add community-charts https://community-charts.github.io/helm-charts >/dev/null
+	helm repo add argo https://argoproj.github.io/argo-helm >/dev/null
 	helm repo update >/dev/null
 	set -a && source versions.env && set +a && \
 	kubectl apply -f "https://github.com/kubernetes-sigs/gateway-api/releases/download/$$GATEWAY_API_VERSION/standard-install.yaml" && \
@@ -39,10 +39,12 @@ up:
 	  --version $$INFERENCEPOOL_CHART_VERSION -n llm-d --create-namespace \
 	  -f ../charts/llm-d/inferencepool-values-local.yaml --wait --timeout 10m
 	@echo "Waiting for the observability Application to sync (provides the PodMonitor CRD and 'monitoring' namespace)..."
-	@for i in $$(seq 1 90); do \
-	  kubectl get ns monitoring >/dev/null 2>&1 && kubectl get crd podmonitors.monitoring.coreos.com >/dev/null 2>&1 && break; \
+	@ready=0; \
+	for i in $$(seq 1 90); do \
+	  kubectl get ns monitoring >/dev/null 2>&1 && kubectl get crd podmonitors.monitoring.coreos.com >/dev/null 2>&1 && { ready=1; break; }; \
 	  sleep 5; \
-	done
+	done; \
+	[ "$$ready" -eq 1 ] || { echo "ERROR: observability Application never synced - 'monitoring' namespace or PodMonitor CRD absent after 450s"; exit 1; }
 	kubectl apply -f manifests/llm-d-pools-podmonitor.yaml
 	kubectl -n monitoring create configmap llm-d-serving-dashboard \
 	  --from-file=llm-d-serving.json=../charts/observability/dashboards/llm-d-serving.json \
@@ -50,10 +52,12 @@ up:
 	  | kubectl label -f - grafana_dashboard=1 --local -o yaml \
 	  | kubectl apply -f -
 	@echo "Waiting for EPP ext-proc listener (readinessProbe checks :9003, but Envoy calls :9002)..."
-	@for i in $$(seq 1 60); do \
-	  kubectl -n llm-d logs -l app.kubernetes.io/name=epp --tail=50 2>/dev/null | grep -q 9002 && break; \
+	@ready=0; \
+	for i in $$(seq 1 60); do \
+	  kubectl -n llm-d logs -l inferencepool=llm-d-ip-epp --tail=50 2>/dev/null | grep -q 9002 && { ready=1; break; }; \
 	  sleep 2; \
-	done
+	done; \
+	[ "$$ready" -eq 1 ] || { echo "ERROR: EPP ext-proc listener on :9002 never appeared in logs after 120s - InferencePool backendRefs would be rejected or the EPP never came up"; exit 1; }
 	@echo "ArgoCD now owns llm-d-infra, llm-d, observability, and mlflow. Run 'make test' once sync completes."
 
 test:
