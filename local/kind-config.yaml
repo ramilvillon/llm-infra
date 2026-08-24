@@ -3,15 +3,21 @@ apiVersion: kind.x-k8s.io/v1alpha4
 name: llm-d-local
 nodes:
   - role: control-plane
+    # listenAddress is REQUIRED on every mapping. kind defaults to 0.0.0.0,
+    # which publishes the gateway, Grafana (admin/admin) and MLflow to every
+    # network interface - i.e. to anyone on the same Wi-Fi. Bind to loopback.
     extraPortMappings:
       - containerPort: 30080   # gateway
         hostPort: 30080
+        listenAddress: "127.0.0.1"
         protocol: TCP
       - containerPort: 30300   # grafana
         hostPort: 30300
+        listenAddress: "127.0.0.1"
         protocol: TCP
       - containerPort: 30500   # mlflow
         hostPort: 30500
+        listenAddress: "127.0.0.1"
         protocol: TCP
   - role: worker
     labels:
