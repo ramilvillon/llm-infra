@@ -12,6 +12,10 @@ for v in GATEWAY_API_VERSION GAIE_VERSION ISTIO_VERSION INFERENCE_SIM_VERSION \
   [ -n "${!v:-}" ] || fail "$v is unset"
   case "${!v}" in
     *latest*|*main*|"") fail "$v is not pinned to a concrete version (got '${!v}')" ;;
+    # The plan's own Step 4 uses 0.0.0 as an illustrative placeholder. Reject it
+    # explicitly - a copied placeholder is the likeliest form of "not pinned",
+    # and the latest/main patterns above do not catch it.
+    0.0.0|v0.0.0)       fail "$v is still the plan's placeholder value (got '${!v}')" ;;
   esac
 done
 
