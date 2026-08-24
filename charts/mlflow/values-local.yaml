@@ -1,0 +1,47 @@
+# SQLite on a PVC - local only. POC and prod use RDS Postgres per the spec.
+backendStore:
+  databaseMigration: true
+  # Chart default is ":memory:", which loses every experiment on restart.
+  defaultSqlitePath: /mlflow-data/mlflow.db
+artifactRoot:
+  defaultArtifactRoot: /mlflow-data/mlruns
+extraVolumes:
+  - name: mlflow-data
+    persistentVolumeClaim:
+      claimName: mlflow-data
+extraVolumeMounts:
+  - name: mlflow-data
+    mountPath: /mlflow-data
+service:
+  enabled: true
+  type: ClusterIP
+  port: 80
+resources:
+  requests: { cpu: 100m, memory: 256Mi }
+# The chart exposes no service.nodePort, so publish one here. kind maps
+# 127.0.0.1:30500 to this node port (Task 1). Selector derived from the live
+# deployment: kubectl -n mlflow get deploy -o jsonpath='{.items[0].spec.selector.matchLabels}'
+extraDeploy:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: mlflow-data
+    spec:
+      accessModes: [ReadWriteOnce]
+      resources:
+        requests:
+          storage: 2Gi
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: mlflow-nodeport
+    spec:
+      type: NodePort
+      selector:
+        app: mlflow
+        app.kubernetes.io/name: mlflow
+        app.kubernetes.io/instance: mlflow
+      ports:
+        - port: 5000
+          targetPort: 5000
+          nodePort: 30500
