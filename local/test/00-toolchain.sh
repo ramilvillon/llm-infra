@@ -13,7 +13,11 @@ printf '%s\n' "3.10.0" "$hv" | sort -V -C || fail "helm $hv is below 3.10"
 colima status >/dev/null 2>&1 || fail "colima VM is not running"
 docker info >/dev/null 2>&1 || fail "docker socket unreachable - colima not providing it"
 
-mem=$(colima list --json 2>/dev/null | jq -r 'select(.name=="default") | .memory' || echo 0)
-[ "${mem:-0}" -ge 11000000000 ] 2>/dev/null || echo "WARN: colima memory is ${mem:-unknown}; the stack needs ~12GB"
+# All three are hard failures. Later tasks are entitled to assume Task 0
+# verified this sizing, so a warning here would make that guarantee hollow.
+read -r cpus mem disk < <(colima list --json | jq -r 'select(.name=="default") | "\(.cpus) \(.memory) \(.disk)"')
+[ "${cpus:-0}" -ge 6 ]           || fail "colima has ${cpus:-?} CPUs, need 6"
+[ "${mem:-0}"  -ge 12000000000 ] || fail "colima has ${mem:-?} bytes RAM, need ~12GB"
+[ "${disk:-0}" -ge 60000000000 ] || fail "colima has ${disk:-?} bytes disk, need 60GB"
 
 echo "PASS: toolchain present and colima running"
