@@ -1,0 +1,12 @@
+# Local (kind) gateway exposure: NodePort 30080 so the kind port mapping
+# from Task 1 (127.0.0.1:30080 -> node) reaches the Istio-provisioned Service.
+gateway:
+  gatewayClassName: istio
+  # Fixed name so modelservice-values-common.yaml's HTTPRoute can reference it
+  # by parentRef without depending on the Helm release name.
+  fullnameOverride: llm-d-gateway
+  service:
+    type: NodePort
+    ports:
+      - port: 80
+        nodePort: 30080

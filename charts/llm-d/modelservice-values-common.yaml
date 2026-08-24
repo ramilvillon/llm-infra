@@ -1,0 +1,46 @@
+# Topology shared by local, poc, and prod.
+# No images, no nodeSelectors, no replica counts here - those are environment
+# overrides and belong in modelservice-values-<env>.yaml.
+modelArtifacts:
+  name: dummy-model
+routing:
+  servicePort: 8000
+  # No prefill pool exists yet (prefill.create is false below), so the
+  # disaggregated-serving routing-proxy sidecar has nothing to route to.
+  # Task 6 turns this on together with prefill.create.
+  proxy:
+    enabled: false
+decode:
+  create: true
+prefill:
+  create: false   # Task 6 flips this to true - the whole P/D split is this one line
+
+# Neither llm-d-infra nor llm-d-modelservice creates a Service or HTTPRoute
+# for the pool (verified by reading both charts' templates - there is no
+# Service/HTTPRoute/InferencePool template in either chart). Without one the
+# Gateway has no route to the decode pods, so the topology must supply both.
+# The HTTPRoute's parentRef name matches gateway.fullnameOverride set in
+# infra-values-local.yaml (and, by convention, the poc/prod infra values).
+extraObjects:
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: llm-d-decode
+    spec:
+      selector:
+        llm-d.ai/inference-serving: "true"
+        llm-d.ai/role: decode
+      ports:
+        - port: 8000
+          targetPort: 8000
+  - apiVersion: gateway.networking.k8s.io/v1
+    kind: HTTPRoute
+    metadata:
+      name: llm-d-decode-route
+    spec:
+      parentRefs:
+        - name: llm-d-gateway
+      rules:
+        - backendRefs:
+            - name: llm-d-decode
+              port: 8000
