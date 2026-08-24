@@ -1,0 +1,18 @@
+# HELP vllm:cache_config_info Information of the LLMEngine CacheConfig.
+# HELP vllm:e2e_request_latency_seconds Histogram of end to end request latency in seconds.
+# HELP vllm:generation_tokens_total Total number of generated tokens.
+# HELP vllm:inter_token_latency_seconds Histogram of inter-token latency in seconds.
+# HELP vllm:kv_cache_usage_perc Prometheus metric for the fraction of KV-cache blocks currently in use (from 0 to 1).
+# HELP vllm:lora_requests_info Running stats on lora requests.
+# HELP vllm:max_num_generation_tokens Histogram of maximum number of requested generation tokens.
+# HELP vllm:num_requests_running Number of requests currently running on GPU.
+# HELP vllm:num_requests_waiting Prometheus metric for the number of queued requests.
+# HELP vllm:prompt_tokens_total Total number of prompt tokens processed.
+# HELP vllm:request_decode_time_seconds Histogram of time spent in DECODE phase for request.
+# HELP vllm:request_generation_tokens Number of generation tokens processed.
+# HELP vllm:request_inference_time_seconds Histogram of time spent in RUNNING phase for request.
+# HELP vllm:request_prefill_time_seconds Histogram of time spent in PREFILL phase for request.
+# HELP vllm:request_prompt_tokens Number of prefill tokens processed.
+# HELP vllm:request_success_total Count of successfully processed requests.
+# HELP vllm:time_per_output_token_seconds Histogram of time per output token in seconds.
+# HELP vllm:time_to_first_token_seconds Histogram of time to first token in seconds.
