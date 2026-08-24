@@ -24,6 +24,14 @@
 # `helm upgrade` for the llm-d-ms release, then referencing that name here.
 #
 # apply with: kubectl apply -f local/manifests/llm-d-pools-podmonitor.yaml
+#
+# NOT templated by any Helm chart and NOT applied automatically - this is a
+# plain manifest applied by hand, the same way local/manifests/
+# inferenceobjective-crd.yaml is. A fresh cluster bring-up (Task 11's
+# `make up`) MUST run the `kubectl apply -f` above explicitly, or the
+# rebuilt cluster has no PodMonitor at all and local/test/07-prometheus.sh
+# fails with no obvious cause (Prometheus itself comes up healthy - it's
+# just scraping nothing in namespace llm-d).
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:

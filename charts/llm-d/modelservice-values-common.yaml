@@ -1,6 +1,29 @@
 # Topology shared by local, poc, and prod.
 # No images, no nodeSelectors, no replica counts here - those are environment
 # overrides and belong in modelservice-values-<env>.yaml.
+#
+# One exception that is arguably topology but CANNOT live here: the named
+# "metrics" container port (8000) that Task 7's PodMonitor scrapes by name
+# (decode.containers[0].ports / prefill.containers[0].ports in
+# modelservice-values-<env>.yaml). Declaring that port is required to scrape
+# vLLM in ANY environment - without it, Prometheus's pod service-discovery
+# cannot build a target address at all (verified against the installed
+# `podmonitors.monitoring.coreos.com` CRD: `port`/`portNumber`/`targetPort`
+# all require the Pod to declare the port in its spec, or the target is
+# silently dropped - it never even reaches `state=active`, only
+# `state=any`). It still can't move here because `decode.containers` /
+# `prefill.containers` are LISTS, and Helm replaces a list wholesale across
+# `-f` files rather than merging list elements (confirmed empirically with
+# `helm template` using two `-f` files that each set part of
+# `decode.containers[0]` - whichever file is applied last wins the entire
+# list, dropping the other file's fields entirely; with the image-bearing
+# file applied first, the render silently drops the port; with it applied
+# last, the chart fails outright with "image of container is required").
+# So every environment's own values-<env>.yaml must declare `ports` next to
+# its own `image`/`command`/`args` in the same container list entry, or its
+# pods are silently unscraped. `local/test/07-prometheus.sh` is the guard
+# that catches this for local; carry an equivalent guard forward to POC and
+# prod.
 modelArtifacts:
   name: dummy-model
 routing:
