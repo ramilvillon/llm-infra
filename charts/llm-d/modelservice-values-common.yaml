@@ -5,15 +5,16 @@ modelArtifacts:
   name: dummy-model
 routing:
   servicePort: 8000
-  # No prefill pool exists yet (prefill.create is false below), so the
-  # disaggregated-serving routing-proxy sidecar has nothing to route to.
-  # Task 6 turns this on together with prefill.create.
+  # The routing-proxy sidecar is disabled because it binds the same port as
+  # the model container and collides with it (discovered in Task 5). Additionally,
+  # the simulator cannot exercise genuine KV-cache transfer, so Phase 0's scope
+  # is proving the topology, not the transfer itself.
   proxy:
     enabled: false
 decode:
   create: true
 prefill:
-  create: true   # Task 6 flips this to true - the whole P/D split is this one line
+  create: true   # The entire prefill/decode disaggregation is this one topology line
 
 # Neither llm-d-infra nor llm-d-modelservice creates a Service or HTTPRoute
 # for the pool (verified by reading both charts' templates - there is no
