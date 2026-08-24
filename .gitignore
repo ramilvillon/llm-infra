@@ -37,3 +37,6 @@ kubeconfig-*
 # Editors
 .vscode/
 .idea/
+
+# SDD workspace
+.superpowers/
