@@ -22,3 +22,25 @@ grep -q 'oci://registry.k8s.io/gateway-api-inference-extension/charts/inferencep
   || fail "make up no longer installs the InferencePool/EPP chart - the gateway would round-robin with no EPP in the request path"
 
 echo "PASS: Makefile up target contains all bring-up-gap artifacts and the InferencePool chart install"
+
+# Topology purity: charts/llm-d/modelservice-values-common.yaml must stay
+# byte-identical across local/poc/prod. Enforce the file's own header comment
+# as a runnable guard instead of trusting it stays true by convention -
+# strip comment lines first so prose mentioning these words (the header
+# itself does) cannot false-positive; match actual YAML keys only.
+common="charts/llm-d/modelservice-values-common.yaml"
+[ -f "$common" ] || fail "$common missing"
+stripped=$(grep -v '^[[:space:]]*#' "$common")
+
+grep -qE '^[[:space:]]*(- )?image:' <<<"$stripped" \
+  && fail "$common contains 'image:' - a container image is environment-specific (poc/prod won't use the simulator) and belongs in modelservice-values-<env>.yaml"
+grep -qE '^[[:space:]]*(- )?nodeSelector:' <<<"$stripped" \
+  && fail "$common contains 'nodeSelector:' - node scheduling labels differ per environment's node pools and belong in modelservice-values-<env>.yaml"
+grep -qE '^[[:space:]]*(- )?replicas:' <<<"$stripped" \
+  && fail "$common contains 'replicas:' - replica counts are a per-environment scaling decision and belong in modelservice-values-<env>.yaml"
+grep -qE '^[[:space:]]*(- )?accelerator:' <<<"$stripped" \
+  && fail "$common contains 'accelerator:' - accelerator type (cpu here, gpu on AWS) is environment-specific hardware and belongs in modelservice-values-<env>.yaml"
+grep -qE '^[[:space:]]*(- )?resources:' <<<"$stripped" \
+  && fail "$common contains 'resources:' - resource requests/limits are environment-specific sizing and belong in modelservice-values-<env>.yaml"
+
+echo "PASS: modelservice-values-common.yaml contains no environment-specific keys"

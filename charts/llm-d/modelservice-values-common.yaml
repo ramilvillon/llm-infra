@@ -25,7 +25,10 @@
 # that catches this for local; carry an equivalent guard forward to POC and
 # prod.
 modelArtifacts:
-  name: dummy-model
+  # Stable alias, NOT a model identity. The concrete model differs per environment and is
+  # set in values-<env>.yaml. Putting a real model name here would force this file to be
+  # edited at the AWS transition, destroying the one property it exists to guarantee.
+  name: llm-d-chat
 routing:
   servicePort: 8000
   # The routing-proxy sidecar is disabled because it binds the same port as

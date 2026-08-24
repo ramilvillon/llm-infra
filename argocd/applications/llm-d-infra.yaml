@@ -13,8 +13,8 @@
 # was run against the live cluster for all four Applications with sync
 # disabled and confirmed to show ONLY the addition of the
 # argocd.argoproj.io/tracking-id annotation - no field-level drift, no
-# resource renames/replaces. See task-10-report.md for the full diff-review
-# evidence and ordering used across all four Applications.
+# resource renames/replaces. Same clean-diff check was run for llm-d,
+# observability, and mlflow before their automated sync was enabled too.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -36,7 +36,7 @@ spec:
         valueFiles:
           - $values/charts/llm-d/infra-values-local.yaml
     - repoURL: https://github.com/ramilvillon/llm-infra
-      targetRevision: phase-0-local-stack
+      targetRevision: GIT_REVISION
       ref: values
   syncPolicy:
     automated: { prune: true, selfHeal: true }

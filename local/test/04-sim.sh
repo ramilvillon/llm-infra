@@ -34,7 +34,7 @@ for _ in $(seq 1 30); do curl -fsS localhost:8000/health >/dev/null 2>&1 && brea
 
 body=$(curl -fsS -X POST localhost:8000/v1/chat/completions \
   -H 'Content-Type: application/json' \
-  -d '{"model":"dummy-model","messages":[{"role":"user","content":"hello"}]}') || fail "chat/completions request failed"
+  -d '{"model":"llm-d-chat","messages":[{"role":"user","content":"hello"}]}') || fail "chat/completions request failed"
 echo "$body" | jq -e '.choices[0].message.content' >/dev/null || fail "no choices[0].message.content in response"
 
 grep -q '^vllm:' <<<"$(curl -fsS localhost:8000/metrics)" || fail "no vllm: prefixed Prometheus metrics on /metrics"

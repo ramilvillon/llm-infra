@@ -1,8 +1,15 @@
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: llm-d-local
+# image: on every node is KIND_NODE_IMAGE, substituted from
+# local/versions.env by `make up` (kind has no built-in templating, so the
+# Makefile sed's this file into a temp copy before `kind create cluster`).
+# Without a pin, the cluster's k8s version floats with whatever `kind`
+# binary happens to be installed - the most consequential unpinned version
+# in a stack whose whole thesis is reproducible bring-up.
 nodes:
   - role: control-plane
+    image: KIND_NODE_IMAGE
     # listenAddress is REQUIRED on every mapping. kind defaults to 0.0.0.0,
     # which publishes the gateway, Grafana (admin/admin) and MLflow to every
     # network interface - i.e. to anyone on the same Wi-Fi. Bind to loopback.
@@ -20,8 +27,10 @@ nodes:
         listenAddress: "127.0.0.1"
         protocol: TCP
   - role: worker
+    image: KIND_NODE_IMAGE
     labels:
       llm-d.ai/pool: prefill
   - role: worker
+    image: KIND_NODE_IMAGE
     labels:
       llm-d.ai/pool: decode

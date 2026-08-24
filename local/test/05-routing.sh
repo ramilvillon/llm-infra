@@ -46,7 +46,7 @@ kubectl -n llm-d get gateway "$parent_name" >/dev/null 2>&1 \
 
 body=$(curl -fsS --max-time 30 -X POST localhost:30080/v1/chat/completions \
   -H 'Content-Type: application/json' \
-  -d '{"model":"dummy-model","messages":[{"role":"user","content":"hello"}]}') \
+  -d '{"model":"llm-d-chat","messages":[{"role":"user","content":"hello"}]}') \
   || fail "request through gateway failed"
 echo "$body" | jq -e '.choices[0].message.content' >/dev/null \
   || fail "no completion returned through gateway; got: $body"

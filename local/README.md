@@ -26,13 +26,14 @@ colima isn't already running).
 ## Make targets
 
 - **`make up`** — starts colima if needed, creates the `llm-d-local` kind
-  cluster, installs the Gateway API and GAIE CRDs, Istio (with the
-  inference-extension feature flag), ArgoCD, and the InferencePool/EPP
-  chart (the one piece deliberately kept outside ArgoCD — see
-  `../.superpowers/sdd/2026-08-24-phase-0-local-stack/task-10-report.md`),
-  applies the four ArgoCD Applications that own everything else, and
-  provisions the pools PodMonitor and the Grafana dashboard ConfigMap.
-  Idempotent — safe to re-run against an already-up cluster.
+  cluster (pinned to `KIND_NODE_IMAGE` in `versions.env`), installs the
+  Gateway API and GAIE CRDs, Istio (with the inference-extension feature
+  flag), ArgoCD, and the InferencePool/EPP chart (the one piece
+  deliberately kept outside ArgoCD — Task 10 scoped GitOps to four
+  Applications; a follow-up should wire it in as a fifth, sync-wave-0
+  Application), applies the four ArgoCD Applications that own everything
+  else, and provisions the pools PodMonitor and the Grafana dashboard
+  ConfigMap. Idempotent — safe to re-run against an already-up cluster.
 - **`make test`** — runs every script in `test/*.sh` against the live
   cluster and prints `ALL PASS` on success.
 - **`make load`** — fires 50 concurrent chat-completion requests at the
@@ -57,8 +58,9 @@ These are bound to `127.0.0.1` only (see `kind-config.yaml`), not `0.0.0.0`
 
 `llm-d-infra`, `llm-d`, `observability`, and `mlflow` are ArgoCD
 `Application`s that sync from `https://github.com/ramilvillon/llm-infra`,
-branch `phase-0-local-stack` - **not** from the files on disk. A local
-commit has ZERO effect on the cluster until it is pushed to `origin`. If you
+branch `GIT_REVISION` (`versions.env` - `main` once this branch merges) -
+**not** from the files on disk. A local commit has ZERO effect on the
+cluster until it is pushed to `origin`. If you
 edit anything ArgoCD reads (any `charts/*/values*.yaml`, or an
 `argocd/applications/*.yaml` Application spec itself) and don't see it take
 effect, this is almost always why - push first, then wait for the next
@@ -73,7 +75,7 @@ make up
 make test
 curl -s localhost:30080/v1/chat/completions \
   -H 'Content-Type: application/json' \
-  -d '{"model":"dummy-model","messages":[{"role":"user","content":"hello"}]}' | jq .
+  -d '{"model":"llm-d-chat","messages":[{"role":"user","content":"hello"}]}' | jq .
 make load   # then open http://localhost:30300
 ```
 

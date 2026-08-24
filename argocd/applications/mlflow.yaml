@@ -25,7 +25,7 @@ spec:
         valueFiles:
           - $values/charts/mlflow/values-local.yaml
     - repoURL: https://github.com/ramilvillon/llm-infra
-      targetRevision: phase-0-local-stack
+      targetRevision: GIT_REVISION
       ref: values
   syncPolicy:
     automated: { prune: true, selfHeal: true }

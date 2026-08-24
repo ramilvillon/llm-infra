@@ -46,6 +46,15 @@ kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000:80 >/d
 PF_PID=$!
 for _ in $(seq 1 30); do curl -fsS localhost:3000/api/health >/dev/null 2>&1 && break; sleep 1; done
 
+# The dashboard panels hardcode datasource uid "prometheus", relying on
+# kube-prometheus-stack's default. A chart bump that changes the default uid
+# would blank all four panels while everything below still passes - verify
+# the uid actually exists as a provisioned datasource.
+datasources=$(curl -fsS -u admin:admin localhost:3000/api/datasources) \
+  || fail "cannot fetch grafana datasources"
+echo "$datasources" | jq -e '[.[] | select(.uid=="prometheus")] | length >= 1' >/dev/null \
+  || fail "no grafana datasource with uid 'prometheus' - dashboard panels reference this uid and would render blank"
+
 dash=$(curl -fsS -u admin:admin localhost:3000/api/dashboards/uid/llm-d-serving) \
   || fail "cannot fetch dashboard uid llm-d-serving from grafana api"
 jq -e '.dashboard.title' <<<"$dash" >/dev/null || fail "dashboard uid llm-d-serving not provisioned"
