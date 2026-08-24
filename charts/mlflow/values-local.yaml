@@ -32,6 +32,16 @@ extraDeploy:
     kind: PersistentVolumeClaim
     metadata:
       name: mlflow-data
+      # ArgoCD's mlflow Application runs with automated.prune: true. This PVC
+      # is rendered from THIS SAME values file via extraDeploy - if the file
+      # is ever renamed/mistyped/removed from the Application's valueFiles,
+      # the next automated sync would see the PVC as no longer desired and
+      # prune it, silently deleting every experiment with no warning. This
+      # annotation opts the PVC out of pruning regardless of what happens to
+      # the rest of the Application; nothing else here holds data, so nothing
+      # else needs it.
+      annotations:
+        argocd.argoproj.io/sync-options: Prune=false
     spec:
       accessModes: [ReadWriteOnce]
       resources:
