@@ -1,0 +1,32 @@
+# MLflow tracking server on SQLite + a single RWO PVC. MUST reference
+# values-local.yaml - the file pinning replicaCount: 1 - not a divergent
+# values source; a second replica writing the same SQLite file corrupts it.
+#
+# helm.releaseName is pinned to "mlflow", matching both the live release name
+# (Task 9) and this Application's own name, so this one is a no-op safety net
+# rather than a required override - kept explicit for consistency with the
+# other three Applications, all of which DO need it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mlflow
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mlflow
+  sources:
+    - repoURL: https://community-charts.github.io/helm-charts
+      chart: mlflow
+      targetRevision: MLFLOW_CHART_VERSION
+      helm:
+        releaseName: mlflow
+        valueFiles:
+          - $values/charts/mlflow/values-local.yaml
+    - repoURL: https://github.com/ramilvillon/llm-infra
+      targetRevision: phase-0-local-stack
+      ref: values
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]

@@ -1,0 +1,43 @@
+# Gateway chart. Must sync before llm-d (modelservice) - sync-wave 0 - so the
+# Gateway (and its fullnameOverride: llm-d-gateway) exists before the
+# modelservice chart's HTTPRoute tries to parentRef it.
+#
+# helm.releaseName is pinned to "llm-d-infra" to match the release name this
+# chart was originally `helm install`-ed under (Task 5). It happens to equal
+# this Application's own name, but it is set explicitly rather than left to
+# ArgoCD's default (which is also the Application name) so that a future
+# rename of the Application does not silently change the rendered resource
+# names and orphan the live Gateway.
+#
+# automated prune/selfHeal below was enabled only after `argocd app diff`
+# was run against the live cluster for all four Applications with sync
+# disabled and confirmed to show ONLY the addition of the
+# argocd.argoproj.io/tracking-id annotation - no field-level drift, no
+# resource renames/replaces. See task-10-report.md for the full diff-review
+# evidence and ordering used across all four Applications.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: llm-d-infra
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: llm-d
+  sources:
+    - repoURL: https://llm-d-incubation.github.io/llm-d-infra/
+      chart: llm-d-infra
+      targetRevision: LLM_D_INFRA_CHART_VERSION
+      helm:
+        releaseName: llm-d-infra
+        valueFiles:
+          - $values/charts/llm-d/infra-values-local.yaml
+    - repoURL: https://github.com/ramilvillon/llm-infra
+      targetRevision: phase-0-local-stack
+      ref: values
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]
