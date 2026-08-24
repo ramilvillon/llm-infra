@@ -18,21 +18,19 @@ prefill:
 # Neither llm-d-infra nor llm-d-modelservice creates a Service or HTTPRoute
 # for the pool (verified by reading both charts' templates - there is no
 # Service/HTTPRoute/InferencePool template in either chart). Without one the
-# Gateway has no route to the decode pods, so the topology must supply both.
+# Gateway has no route to the decode pods, so the topology must supply the
+# HTTPRoute. The third llm-d chart (InferencePool + EPP, installed as
+# release "llm-d-ip") supplies the InferencePool itself and watches decode
+# Pods directly by label (no Service needed - its RBAC only asks for
+# get/watch/list on pods) - so the backendRef targets the InferencePool,
+# not a Service. Routing through a plain Service would bypass the EPP
+# scheduler entirely and silently fall back to round-robin, which is the
+# exact thing llm-d exists to avoid.
 # The HTTPRoute's parentRef name matches gateway.fullnameOverride set in
 # infra-values-local.yaml (and, by convention, the poc/prod infra values).
+# The backendRef name ("llm-d-ip") matches the InferencePool chart's Helm
+# release name (the chart names the InferencePool CR after {{ .Release.Name }}).
 extraObjects:
-  - apiVersion: v1
-    kind: Service
-    metadata:
-      name: llm-d-decode
-    spec:
-      selector:
-        llm-d.ai/inference-serving: "true"
-        llm-d.ai/role: decode
-      ports:
-        - port: 8000
-          targetPort: 8000
   - apiVersion: gateway.networking.k8s.io/v1
     kind: HTTPRoute
     metadata:
@@ -42,5 +40,7 @@ extraObjects:
         - name: llm-d-gateway
       rules:
         - backendRefs:
-            - name: llm-d-decode
+            - group: inference.networking.k8s.io
+              kind: InferencePool
+              name: llm-d-ip
               port: 8000
