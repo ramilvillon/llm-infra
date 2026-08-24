@@ -13,7 +13,7 @@ routing:
 decode:
   create: true
 prefill:
-  create: false   # Task 6 flips this to true - the whole P/D split is this one line
+  create: true   # Task 6 flips this to true - the whole P/D split is this one line
 
 # Neither llm-d-infra nor llm-d-modelservice creates a Service or HTTPRoute
 # for the pool (verified by reading both charts' templates - there is no
