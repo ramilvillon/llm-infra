@@ -1,0 +1,44 @@
+# kube-prometheus-stack (Prometheus + Grafana + kube-state-metrics). Destination
+# namespace is "monitoring", NOT "observability" - it must match the namespace
+# Task 7/8 actually installed into, or ArgoCD creates a second full stack
+# (Prometheus, Grafana, CRDs, node-exporter) in a new "observability"
+# namespace alongside the live one, doubling resource usage and likely
+# failing on the NodePort 30300 conflict.
+#
+# helm.releaseName is pinned to "kube-prometheus-stack" for the same reason
+# as llm-d-ms below: this chart names its resources
+# "{{ .Release.Name }}-grafana" etc (confirmed live), so leaving it unset
+# would default to the Application name "observability" and render an
+# entirely different, duplicate set of resource names instead of adopting
+# the live ones.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: KUBE_PROM_STACK_VERSION
+      helm:
+        releaseName: kube-prometheus-stack
+        valueFiles:
+          - $values/charts/observability/values-local.yaml
+    - repoURL: https://github.com/ramilvillon/llm-infra
+      targetRevision: GIT_REVISION
+      ref: values
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    # ServerSideApply is required here (and only here): kube-prometheus-stack's
+    # CRDs (alertmanagers, prometheuses, etc) are large enough that
+    # client-side apply's kubectl.kubernetes.io/last-applied-configuration
+    # annotation exceeds the 262144-byte etcd annotation limit, so the
+    # default apply fails on those 6 CRD/admission resources every sync
+    # (observed: "metadata.annotations: Too long"). Server-side apply does
+    # not use that annotation, so it isn't subject to the limit.
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]

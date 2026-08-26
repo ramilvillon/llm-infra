@@ -1,0 +1,7 @@
+# Toolchain installed 2026-08-24
+colima	colima version 0.10.3
+kind	kind v0.32.0 go1.26.3 darwin/arm64
+kubectl	Client Version: v1.36.4
+helm	version.BuildInfo{Version:"v4.2.4", GitCommit:"3900f434fd3ef2b84065dc04508df48f288dba00", GitTreeState:"clean", GoVersion:"go1.26.5", KubeClientVersion:"v1.36"}
+istioctl	istioctl version 1.30.3
+yq	yq (https://github.com/mikefarah/yq/) version v4.53.6

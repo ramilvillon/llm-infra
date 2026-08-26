@@ -1,0 +1,18 @@
+# InferencePool + EPP scheduler - the third llm-d chart. Without this, the
+# Gateway round-robins across decode pods via a plain Service, which is the
+# exact behaviour llm-d exists to replace with KV-cache/load-aware routing.
+#
+# matchLabels below are the actual labels the modelservice chart puts on
+# decode pods (confirmed via `kubectl -n llm-d get pods --show-labels`):
+# llm-d.ai/inference-serving=true (modelArtifacts.labels default) and
+# llm-d.ai/role=decode (chart-added, per Task 5's verified facts).
+inferencePool:
+  modelServers:
+    matchLabels:
+      llm-d.ai/inference-serving: "true"
+      llm-d.ai/role: decode
+  targetPorts:
+    - number: 8000
+  modelServerType: vllm
+provider:
+  name: istio

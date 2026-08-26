@@ -1,0 +1,66 @@
+# SQLite on a single RWO PVC - LOCAL ONLY. POC and prod use RDS Postgres per the spec.
+#
+# CEILING: SQLite on one RWO volume is strictly single-writer. There is no HA, no
+# concurrent access from a second replica, and the data lives only as long as this PVC.
+# It is fine for one engineer running evals locally; it will corrupt rather than fail
+# loudly if scaled. Hence the replicaCount pin below - do not remove it.
+replicaCount: 1
+backendStore:
+  databaseMigration: true
+  # Chart default is ":memory:", which loses every experiment on restart.
+  defaultSqlitePath: /mlflow-data/mlflow.db
+artifactRoot:
+  defaultArtifactRoot: /mlflow-data/mlruns
+extraVolumes:
+  - name: mlflow-data
+    persistentVolumeClaim:
+      claimName: mlflow-data
+extraVolumeMounts:
+  - name: mlflow-data
+    mountPath: /mlflow-data
+service:
+  enabled: true
+  type: ClusterIP
+  port: 80
+resources:
+  requests: { cpu: 100m, memory: 256Mi }
+# The chart exposes no service.nodePort, so publish one here. kind maps
+# 127.0.0.1:30500 to this node port (Task 1). Selector derived from the live
+# deployment: kubectl -n mlflow get deploy -o jsonpath='{.items[0].spec.selector.matchLabels}'
+extraDeploy:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: mlflow-data
+      # ArgoCD's mlflow Application runs with automated.prune: true. This PVC
+      # is rendered from THIS SAME values file via extraDeploy - if the file
+      # is ever renamed/mistyped/removed from the Application's valueFiles,
+      # the next automated sync would see the PVC as no longer desired and
+      # prune it, silently deleting every experiment with no warning. This
+      # annotation opts the PVC out of pruning regardless of what happens to
+      # the rest of the Application; nothing else here holds data, so nothing
+      # else needs it.
+      annotations:
+        argocd.argoproj.io/sync-options: Prune=false
+    spec:
+      accessModes: [ReadWriteOnce]
+      resources:
+        requests:
+          storage: 2Gi
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: mlflow-nodeport
+    spec:
+      type: NodePort
+      # Derived from the live deployment, NOT guessed. Re-derive this if
+      # MLFLOW_CHART_VERSION changes: a chart bump can rename these labels, which
+      # would silently zero the Service's endpoints.
+      selector:
+        app: mlflow
+        app.kubernetes.io/name: mlflow
+        app.kubernetes.io/instance: mlflow
+      ports:
+        - port: 5000
+          targetPort: 5000
+          nodePort: 30500

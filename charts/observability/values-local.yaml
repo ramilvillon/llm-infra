@@ -1,0 +1,28 @@
+# charts/observability/values-local.yaml
+# Local (kind) overrides for kube-prometheus-stack. Nothing here should be
+# assumed on AWS - NodePort exposure and the admin password are kind-only.
+grafana:
+  service:
+    type: NodePort
+    nodePort: 30300
+  adminPassword: admin   # local only - never used outside kind
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      # This label only watches ConfigMaps - it does not create one. The
+      # llm-d-serving-dashboard ConfigMap (charts/observability/dashboards/llm-d-serving.json,
+      # labelled grafana_dashboard=1) is created imperatively by `make up` (Task 11),
+      # NOT by this Helm chart. Removing that Makefile line silently disables the
+      # dashboard: the sidecar keeps watching, but nothing is there to find.
+prometheus:
+  prometheusSpec:
+    # Scrape every ServiceMonitor/PodMonitor regardless of release label,
+    # so the llm-d chart's own monitors are picked up without extra labels.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    retention: 24h
+    resources:
+      requests: { cpu: 200m, memory: 512Mi }
+alertmanager:
+  enabled: false   # not needed locally

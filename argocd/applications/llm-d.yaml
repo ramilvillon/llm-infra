@@ -1,0 +1,38 @@
+# Modelservice chart (prefill/decode pools). Syncs AFTER llm-d-infra (wave 1
+# vs wave 0) so the Gateway this chart's HTTPRoute parentRefs already exists.
+#
+# helm.releaseName is pinned to "llm-d-ms" - NOT "llm-d" (this Application's
+# own name) - because that is the release name Task 5/6 actually
+# `helm install`-ed under, and this chart's Deployment names are derived
+# from the release name (confirmed live: "llm-d-ms-llm-d-modelservice-decode"
+# / "-prefill"). Leaving releaseName unset would default to the Application
+# name "llm-d", rendering DIFFERENTLY-NAMED Deployments and creating a
+# duplicate decode/prefill pool alongside the live one instead of adopting
+# it - exactly the destructive-adoption failure mode this task warns about.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: llm-d
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: llm-d
+  sources:
+    - repoURL: https://llm-d-incubation.github.io/llm-d-modelservice/
+      chart: llm-d-modelservice
+      targetRevision: LLM_D_MODELSERVICE_CHART_VERSION
+      helm:
+        releaseName: llm-d-ms
+        valueFiles:
+          - $values/charts/llm-d/modelservice-values-common.yaml
+          - $values/charts/llm-d/modelservice-values-local.yaml
+    - repoURL: https://github.com/ramilvillon/llm-infra
+      targetRevision: GIT_REVISION
+      ref: values
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]
